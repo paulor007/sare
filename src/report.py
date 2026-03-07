@@ -1,5 +1,5 @@
 """
-Gerador de relatórios PDF.
+Gerador de relatórios PDF profissionais.
 
 Usa ReportLab para criar PDFs com:
 - Cabeçalho com nome da empresa e data
@@ -17,7 +17,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     HRFlowable,
@@ -26,6 +26,7 @@ from reportlab.platypus import (
 import pandas as pd
 
 from src.config import EMPRESA_NOME, RELATORIO_TITULO, OUTPUT_DIR
+
 
 # ══════════════════════════════════════════
 # CORES DO TEMA
@@ -37,6 +38,7 @@ COR_CINZA_BORDA = colors.HexColor("#e2e8f0")    # Bordas leves
 COR_TEXTO = colors.HexColor("#334155")           # Texto principal
 COR_TEXTO_LEVE = colors.HexColor("#94a3b8")     # Texto secundário
 COR_ESCURO = colors.HexColor("#1e293b")          # Valores grandes
+
 
 # ══════════════════════════════════════════
 # ESTILOS CUSTOMIZADOS
@@ -58,7 +60,7 @@ def _estilos():
         fontName="Helvetica-Bold",
         fontSize=22,
         textColor=COR_PRIMARIA,
-        spaceAfter=6,
+        spaceAfter=16,
     ))
 
     styles.add(ParagraphStyle(
@@ -76,6 +78,7 @@ def _estilos():
         textColor=COR_PRIMARIA,
         spaceBefore=20,
         spaceAfter=10,
+        keepWithNext=True,
     ))
 
     styles.add(ParagraphStyle(
@@ -96,11 +99,12 @@ def _estilos():
     styles.add(ParagraphStyle(
         name="MetricaValor",
         fontName="Helvetica-Bold",
-        fontSize=15,
+        fontSize=13,
         textColor=COR_ESCURO,
     ))
 
     return styles
+
 
 # ══════════════════════════════════════════
 # COMPONENTES REUTILIZÁVEIS
@@ -120,7 +124,7 @@ def _card_metrica(label: str, valor: str) -> Table:
         [Paragraph(label, styles["MetricaLabel"])],
         [Paragraph(valor, styles["MetricaValor"])],
     ]
-    table = Table(data, colWidths=[4.2 * cm])
+    table = Table(data, colWidths=[4.5 * cm])
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f1f5f9")),
         ("BOX", (0, 0), (-1, -1), 0.5, COR_CINZA_BORDA),
@@ -132,7 +136,8 @@ def _card_metrica(label: str, valor: str) -> Table:
     ]))
     return table
 
-def _table_formatada(cabecalho: list, dados: list, col_widths=None) -> Table:
+
+def _tabela_formatada(cabecalho: list, dados: list, col_widths=None) -> Table:
     """
     Cria tabela com estilo profissional.
 
@@ -175,11 +180,12 @@ def _table_formatada(cabecalho: list, dados: list, col_widths=None) -> Table:
     # Zebra: linhas pares com fundo cinza claro
     for i in range(2, len(table_data), 2):
         style_commands.append(
-           ("BACKGROUND", (0, i), (-1, i), COR_CINZA_CLARO) 
+            ("BACKGROUND", (0, i), (-1, i), COR_CINZA_CLARO)
         )
 
     table.setStyle(TableStyle(style_commands))
     return table
+
 
 def _df_para_tabela(df: pd.DataFrame, col_widths=None, max_linhas: int = 10) -> Table:
     """
@@ -196,10 +202,10 @@ def _df_para_tabela(df: pd.DataFrame, col_widths=None, max_linhas: int = 10) -> 
     """
     if df.empty:
         return Paragraph("<i>Sem dados disponíveis</i>", _estilos()["TextoNormal"])
-    
+
     # Limitar linhas
     df_limited = df.head(max_linhas)
-    
+
     # Cabeçalho
     cabecalho = list(df_limited.columns)
 
@@ -211,10 +217,12 @@ def _df_para_tabela(df: pd.DataFrame, col_widths=None, max_linhas: int = 10) -> 
             val = row[col]
             if isinstance(val, float):
                 linha.append(f"R$ {val:,.2f}")
-            else: linha.append(str(val))
+            else:
+                linha.append(str(val))
         dados.append(linha)
 
-    return _table_formatada(cabecalho, dados, col_widths)
+    return _tabela_formatada(cabecalho, dados, col_widths)
+
 
 # ══════════════════════════════════════════
 # FUNÇÃO PRINCIPAL — GERAR PDF
@@ -227,7 +235,7 @@ def gerar_relatorio(
     top_produtos: pd.DataFrame,
     vendas_mes: pd.DataFrame,
     metas_comparativo: pd.DataFrame,
-    cotacao_dolar: dict,   
+    cotacao_dolar: dict,
 ) -> str:
     """
     Gera relatório PDF completo.
@@ -267,7 +275,7 @@ def gerar_relatorio(
     # ── 1. CABEÇALHO ──
     elementos.append(Paragraph(
         RELATORIO_TITULO,
-        styles["TituloRelatorio"]
+        styles["TituloRelatorio"],
     ))
     elementos.append(Paragraph(
         f"{EMPRESA_NOME}  —  Gerado em {agora.strftime('%d/%m/%Y às %H:%M')}",
@@ -286,7 +294,7 @@ def gerar_relatorio(
             _card_metrica("Ticket Médio", f"R$ {resumo['ticket_medio']:,.2f}"),
             _card_metrica("Dólar", f"R$ {cotacao_dolar['valor']:.2f}"),
         ]],
-        colWidths=[4.4 * cm] * 4, 
+        colWidths=[4.4 * cm] * 4,
     )
     cards.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -299,7 +307,7 @@ def gerar_relatorio(
         f"Pendentes: <b>{resumo['total_pendentes']}</b> "
         f"(R$ {resumo.get('valor_pendente', 0):,.2f})  |  "
         f"Canceladas: <b>{resumo['total_canceladas']}</b>  |  "
-        f"Dólar em: <b>{cotacao_dolar['data']}</b>" 
+        f"Dólar em: <b>{cotacao_dolar['data']}</b>"
     )
     elementos.append(Paragraph(info, styles["TextoNormal"]))
     elementos.append(Spacer(1, 15))
@@ -366,4 +374,3 @@ def gerar_relatorio(
     doc.build(elementos)
 
     return str(caminho)
-

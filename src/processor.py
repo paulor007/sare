@@ -33,8 +33,8 @@ def _has_columns(df: pd.DataFrame, columns: list) -> bool:
     """
     missing = [col for col in columns if col not in df.columns]
     if missing:
-        print(f"⚠️ Colunas ausentes no DataFrame: {missing}")
-        print(f"   Colunas disponíveis: {list(df.columns)}")
+        print(f" Colunas ausentes no DataFrame: {missing}")
+        print(f"  Colunas disponíveis: {list(df.columns)}")
         return False
     return True
 
@@ -47,7 +47,7 @@ def _filter_by_status(df: pd.DataFrame, status: str) -> pd.DataFrame:
     (assume que todos são válidos).
     """
     if "status" not in df.columns:
-        print("⚠️ Coluna 'status' não encontrada — usando todos os registros")
+        print(" Coluna 'status' não encontrada — usando todos os registros")
         return df
     return df[df["status"] == status]
 

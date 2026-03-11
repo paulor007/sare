@@ -257,7 +257,7 @@ st.markdown(f"""
 <div style="background: linear-gradient(135deg, #0b0f19 0%, #131a2b 100%);
     border: 1px solid #1e293b; border-radius: 12px; padding: 30px; margin-bottom: 24px;">
     <h1 style="color: #5ba4d9; margin: 0; font-size: 2rem;">
-        🏢 SARE — Sistema de Automação de Relatórios Empresarial
+        🏢 SARE — Sistema de Automação de Relatórios Empresariais
     </h1>
     <p style="color: #94a3b8; margin: 8px 0 16px 0; font-size: 1.1rem;">
         Automação completa: extrai dados de múltiplas fontes, processa, gera PDF profissional

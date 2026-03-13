@@ -375,7 +375,7 @@ with st.sidebar:
         key="upload_vendas",
     )
     arquivo_metas = st.file_uploader(
-        "Enviar arquivo de metas (opcional)",
+        "Enviar metas para comparação com o realizado (opcional)",
         type=["xlsx", "csv", "txt", "docx"],
         help=(
             "Envie um arquivo separado de metas para comparar com o realizado. "

@@ -236,6 +236,10 @@ def gerar_relatorio(
     vendas_mes: pd.DataFrame,
     metas_comparativo: pd.DataFrame,
     cotacao_dolar: dict,
+    comparativo_periodos: dict | None = None,
+    insights: pd.DataFrame | None = None,
+
+
 ) -> str:
     """
     Gera relatório PDF completo.
@@ -310,7 +314,28 @@ def gerar_relatorio(
         f"Dólar em: <b>{cotacao_dolar['data']}</b>"
     )
     elementos.append(Paragraph(info, styles["TextoNormal"]))
-    elementos.append(Spacer(1, 15))
+    elementos.append(Spacer(1, 10))
+
+    if comparativo_periodos:
+        resumo_periodos = (
+            f"Comparativo de períodos: <b>{comparativo_periodos.get('periodo_atual_label', 'N/D')}</b> vs "
+            f"<b>{comparativo_periodos.get('periodo_anterior_label', 'N/D')}</b> | "
+            f"Faturamento: <b>{comparativo_periodos['faturamento']['variacao_pct'] if comparativo_periodos['faturamento']['variacao_pct'] is not None else 0:+.1f}%</b> | "
+            f"Ticket: <b>{comparativo_periodos['ticket_medio']['variacao_pct'] if comparativo_periodos['ticket_medio']['variacao_pct'] is not None else 0:+.1f}%</b> | "
+            f"Pendências: <b>{comparativo_periodos['pendentes']['variacao_pct'] if comparativo_periodos['pendentes']['variacao_pct'] is not None else 0:+.1f}%</b>"
+        )
+        elementos.append(Paragraph(resumo_periodos, styles["TextoNormal"]))
+        elementos.append(Spacer(1, 12))
+
+    if insights is not None and not insights.empty:
+        elementos.append(Paragraph("Alertas e Insights Automáticos", styles["SecaoTitulo"]))
+        elementos.append(_df_para_tabela(
+            insights[["Severidade", "Tipo", "Insight", "Indicador"]],
+            col_widths=[2.7 * cm, 2.9 * cm, 8.6 * cm, 3.3 * cm],
+            max_linhas=8,
+        ))
+        elementos.append(Spacer(1, 15))
+
 
     # ── 3. VENDAS POR CATEGORIA ──
     elementos.append(Paragraph("Vendas por Categoria", styles["SecaoTitulo"]))

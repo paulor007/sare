@@ -72,7 +72,8 @@ def tarefa_gerar_relatorio():
         from src.extractors import extrair_vendas, extrair_metas, extrair_cotacao_dolar
         from src.processor import (
             resumo_vendas, vendas_por_categoria, vendas_por_vendedor,
-            vendas_por_produto, vendas_por_mes, comparar_metas, 
+            vendas_por_produto, vendas_por_mes, comparar_metas,
+            comparar_periodos, gerar_alertas_insights,
         )
         from src.report import gerar_relatorio
         from src.mailer import enviar_relatorio
@@ -86,6 +87,9 @@ def tarefa_gerar_relatorio():
         # ── Processar ──
         logger.info(" Processando...")
         rv = resumo_vendas(vendas)
+        comp = comparar_metas(vendas, metas)
+        comparativo = comparar_periodos(vendas)
+        insights = gerar_alertas_insights(vendas, metas)
 
         # ── Gerar PDF ──
         logger.info(" Gerando PDF...")
@@ -95,7 +99,9 @@ def tarefa_gerar_relatorio():
             top_vendedores=vendas_por_vendedor(vendas),
             top_produtos=vendas_por_produto(vendas),
             vendas_mes=vendas_por_mes(vendas),
-            metas_comparativo=comparar_metas(vendas, metas),
+            metas_comparativo=comp,
+            comparativo_periodos=comparativo,
+            insights=insights,
             cotacao_dolar=dolar,
         )
         logger.info(f" PDF gerado: {caminho}")

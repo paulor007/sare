@@ -33,6 +33,8 @@ from src.processor import (
     vendas_por_produto,
     vendas_por_mes,
     comparar_metas,
+    comparar_periodos,
+    gerar_alertas_insights,
 )
 from src.report import gerar_relatorio
 from src.mailer import enviar_relatorio
@@ -61,6 +63,8 @@ def _pipeline():
     prod = vendas_por_produto(vendas)
     mes = vendas_por_mes(vendas)
     comp = comparar_metas(vendas, metas)
+    comparativo = comparar_periodos(vendas)
+    insights = gerar_alertas_insights(vendas, metas)
 
     return {
         "resumo": rv,
@@ -69,6 +73,8 @@ def _pipeline():
         "top_produtos": prod,
         "vendas_mes": mes,
         "metas_comparativo": comp,
+        "comparativo_periodos": comparativo,
+        "insights": insights,
         "cotacao_dolar": dolar,
     }
 
@@ -103,6 +109,12 @@ def status():
     click.echo(f"   Canceladas:   {rv['total_canceladas']:>6}")
     click.echo(f"   Ticket médio: R$ {rv['ticket_medio']:>12,.2f}")
     click.echo(f"   Dólar:        R$ {dolar['valor']:>12.2f}")
+
+    insights = dados['insights']
+    if not insights.empty:
+        click.echo("\n   Alertas e insights:")
+        for _, row in insights.head(3).iterrows():
+            click.echo(f"   - [{row['Severidade']}] {row['Insight']}")
 
     click.echo(f"\n   {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     click.echo(f"{'═' * 55}\n")

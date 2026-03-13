@@ -37,8 +37,16 @@ from src.processor import (
     vendas_por_produto,
     vendas_por_mes,
     comparar_metas,
+    comparar_periodos,
+    gerar_alertas_insights,
 )
 from src.report import gerar_relatorio
+from src.upload_processor import (
+    preparar_upload_vendas,
+    preparar_upload_metas,
+    construir_metas_demonstrativas,
+    dataframe_para_excel_bytes,
+)
 
 
 # ══════════════════════════════════════════
@@ -50,6 +58,12 @@ st.set_page_config(
     page_icon="🏢",
     layout="wide",
 )
+
+PERSIST_DIR = Path("data/uploads")
+PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_VENDAS_PATH = PERSIST_DIR / "vendas_upload_atual.pkl"
+UPLOAD_METAS_PATH = PERSIST_DIR / "metas_upload_atual.pkl"
+UPLOAD_META_INFO_PATH = PERSIST_DIR / "upload_info.txt"
 
 # ══════════════════════════════════════════
 # ESTADO DA SESSÃO
@@ -194,6 +208,8 @@ def processar_dados(vendas_filtradas: pd.DataFrame, metas_df: pd.DataFrame) -> d
         "produtos": vendas_por_produto(vendas_filtradas),
         "mensal": vendas_por_mes(vendas_filtradas),
         "metas_comp": comparar_metas(vendas_filtradas, metas_df),
+        "comparativo": comparar_periodos(vendas_filtradas),
+        "insights": gerar_alertas_insights(vendas_filtradas, metas_df),
     }
 
 
@@ -211,6 +227,40 @@ def obter_ultima_geracao_pdf() -> str:
 
 def status_fonte(ativo: bool) -> str:
     return "🟢 Online" if ativo else "🔴 Indisponível"
+
+
+def salvar_upload_persistido(vendas_df: pd.DataFrame, metas_df: pd.DataFrame, fonte_dados: str, fonte_metas: str) -> None:
+    """Salva o upload atual em disco para manter a fonte após refresh do Streamlit."""
+    vendas_df.to_pickle(UPLOAD_VENDAS_PATH)
+    metas_df.to_pickle(UPLOAD_METAS_PATH)
+    UPLOAD_META_INFO_PATH.write_text(f"{fonte_dados}\n{fonte_metas}", encoding="utf-8")
+
+
+def carregar_upload_persistido() -> tuple[pd.DataFrame, pd.DataFrame, str, str] | None:
+    """Carrega upload persistido em disco quando existir."""
+    if not UPLOAD_VENDAS_PATH.exists() or not UPLOAD_METAS_PATH.exists():
+        return None
+
+    vendas_df = pd.read_pickle(UPLOAD_VENDAS_PATH)
+    metas_df = pd.read_pickle(UPLOAD_METAS_PATH)
+    fonte_dados = "Upload persistido"
+    fonte_metas = "Upload persistido"
+
+    if UPLOAD_META_INFO_PATH.exists():
+        linhas = UPLOAD_META_INFO_PATH.read_text(encoding="utf-8").splitlines()
+        if len(linhas) >= 1 and linhas[0].strip():
+            fonte_dados = linhas[0].strip()
+        if len(linhas) >= 2 and linhas[1].strip():
+            fonte_metas = linhas[1].strip()
+
+    return vendas_df, metas_df, fonte_dados, fonte_metas
+
+
+def limpar_upload_persistido() -> None:
+    """Remove arquivos persistidos de upload e restaura a base demo."""
+    for caminho in [UPLOAD_VENDAS_PATH, UPLOAD_METAS_PATH, UPLOAD_META_INFO_PATH]:
+        if caminho.exists():
+            caminho.unlink()
 
 
 def pode_ver_terminal(perfil: str) -> bool:
@@ -241,6 +291,19 @@ try:
 except Exception as e:
     st.error(f"Erro ao carregar dados do SARE: {e}")
     st.stop()
+
+upload_bruto = None
+upload_info = None
+fonte_dados_label = "Banco SQL (seed/demo)"
+fonte_metas_label = "Excel padrão do projeto"
+
+persistido = carregar_upload_persistido()
+if persistido is not None:
+    vendas_persistidas, metas_persistidas, fonte_dados_persistida, fonte_metas_persistida = persistido
+    vendas_raw = normalizar_datas(vendas_persistidas)
+    metas_raw = metas_persistidas.copy()
+    fonte_dados_label = fonte_dados_persistida
+    fonte_metas_label = fonte_metas_persistida
 
 status_fontes = {
     "Banco SQL": DB_PATH.exists(),
@@ -299,6 +362,81 @@ with st.sidebar:
     )
     st.session_state.perfil_usuario = perfil
     st.info(visao_perfil(perfil))
+
+    st.divider()
+    st.markdown("### 📤 Upload de dados")
+    arquivo_upload = st.file_uploader(
+        "Enviar arquivo de vendas",
+        type=["xlsx", "csv", "txt", "docx"],
+        help=(
+            "Aceita arquivos .xlsx, .csv, .txt e .docx. "
+            "O SARE tenta organizar a estrutura automaticamente antes de atualizar o dashboard."
+        ),
+        key="upload_vendas",
+    )
+    arquivo_metas = st.file_uploader(
+        "Enviar arquivo de metas (opcional)",
+        type=["xlsx", "csv", "txt", "docx"],
+        help=(
+            "Envie um arquivo separado de metas para comparar com o realizado. "
+            "Se você não enviar, o SARE cria metas demonstrativas com base nos vendedores do upload atual."
+        ),
+        key="upload_metas",
+    )
+
+    if st.button("🧹 Voltar para dados demo", use_container_width=True):
+        limpar_upload_persistido()
+        st.success("Uploads removidos. O dashboard voltou para a base demo do projeto.")
+        st.rerun()
+
+    if arquivo_upload is not None:
+        try:
+            upload_bruto, vendas_upload, upload_info = preparar_upload_vendas(arquivo_upload)
+            vendas_raw = normalizar_datas(vendas_upload)
+            fonte_dados_label = f"Upload: {upload_info['nome_arquivo']}"
+
+            data_ref = None
+            if not vendas_raw.empty and "data" in vendas_raw.columns:
+                datas_validas = vendas_raw["data"].dropna()
+                if not datas_validas.empty:
+                    data_ref = datas_validas.max()
+
+            metas_info = None
+            if arquivo_metas is not None:
+                _, metas_upload, metas_info = preparar_upload_metas(arquivo_metas, data_referencia=data_ref)
+                metas_raw = metas_upload.copy()
+                fonte_metas_label = f"Upload: {metas_info['nome_arquivo']}"
+            else:
+                metas_raw = construir_metas_demonstrativas(vendas_raw)
+                fonte_metas_label = "Metas demonstrativas geradas a partir do upload atual"
+
+            salvar_upload_persistido(vendas_raw, metas_raw, fonte_dados_label, fonte_metas_label)
+
+            st.success(f"Arquivo importado: {upload_info['nome_arquivo']}")
+            st.caption(
+                f"{upload_info['linhas_organizadas']} registro(s) prontos para análise "
+                f"a partir de {upload_info['extensao']}."
+            )
+            st.caption(f"Fonte atual das metas: {fonte_metas_label}")
+            if fonte_metas_label.startswith("Metas demonstrativas"):
+                st.warning(
+                    "Como nenhum arquivo de metas foi enviado, o SARE gerou metas demonstrativas "
+                    "com os vendedores do upload atual para evitar misturar nomes antigos com dados novos."
+                )
+            st.download_button(
+                "📥 Baixar planilha organizada",
+                dataframe_para_excel_bytes(vendas_raw),
+                file_name=f"vendas_organizadas_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                mime=(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ),
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Não foi possível importar o arquivo enviado: {e}")
+
+    st.caption(f"Fonte atual dos dados: {fonte_dados_label}")
+    st.caption(f"Fonte atual das metas: {fonte_metas_label}")
 
     st.divider()
     st.markdown("### 🔎 Filtros globais")
@@ -367,7 +505,14 @@ with st.sidebar:
     dados = processar_dados(vendas_filtradas, metas_raw)
     rv = dados["resumo"]
 
-    st.metric("💵 Dólar", f"R$ {dolar['valor']:.2f}", help=f"Cotação em {dolar['data']}")
+    st.metric(
+        "💵 Dólar",
+        f"R$ {dolar['valor']:.2f}",
+        help=(
+            f"Cotação em {dolar['data']}"
+            + (f" • {dolar.get('origem')}" if dolar.get('origem') else "")
+        ),
+    )
     st.metric("💰 Faturamento", f"R$ {rv['faturamento_total']:,.2f}")
     st.metric("📦 Vendas concluídas", f"{rv['total_vendas']}")
     st.metric("⏳ Pendentes", f"{rv['total_pendentes']}")
@@ -427,6 +572,8 @@ with acao2:
                     vendas_mes=dados["mensal"],
                     metas_comparativo=dados["metas_comp"],
                     cotacao_dolar=dolar,
+                    comparativo_periodos=dados["comparativo"],
+                    insights=dados["insights"],
                 )
             registrar_evento("pdf", "Sucesso", f"PDF gerado em {caminho}")
             st.success(f"Relatório gerado com sucesso: {Path(caminho).name}")
@@ -480,7 +627,31 @@ tab1, tab2, tab3, tab4 = st.tabs(
 
 with tab1:
     st.title("📊 Dashboard de Vendas")
-    st.caption(f"{EMPRESA_NOME} — visão filtrada por {periodo_global.lower()}")
+    st.caption(
+        f"{EMPRESA_NOME} — visão filtrada por {periodo_global.lower()} | Fonte atual: {fonte_dados_label}"
+    )
+
+    with st.expander("ℹ️ Como interpretar este dashboard"):
+        st.markdown(
+            "**O que o SARE faz:** integra dados, organiza informações e transforma isso em indicadores, gráficos, PDF e alertas gerenciais.\n\n"
+            "**Ticket médio:** é o valor médio por venda concluída. Fórmula: faturamento total ÷ quantidade de vendas concluídas.\n\n"
+            "**Alertas e insights automáticos:** ficam logo abaixo do resumo executivo e destacam quedas, riscos, pendências e oportunidades detectadas nos dados.\n\n"
+            "**Upload inteligente:** ao enviar um arquivo .xlsx, .csv, .txt ou .docx, o SARE tenta organizar a estrutura e recalcula o dashboard automaticamente."
+        )
+
+    if upload_info is not None and upload_bruto is not None:
+        st.success(f"Dashboard alimentado pelo arquivo: {upload_info['nome_arquivo']}")
+        with st.expander("🔍 Prévia do arquivo importado e da versão organizada"):
+            prev1, prev2 = st.columns(2)
+            with prev1:
+                st.markdown("**Arquivo recebido**")
+                st.dataframe(upload_bruto.head(10), use_container_width=True, hide_index=True)
+            with prev2:
+                st.markdown("**Dados organizados pelo SARE**")
+                preview_org = vendas_raw.copy()
+                if "data" in preview_org.columns:
+                    preview_org["data"] = preview_org["data"].dt.strftime("%d/%m/%Y")
+                st.dataframe(preview_org.head(10), use_container_width=True, hide_index=True)
 
     if vendas_filtradas.empty:
         st.warning("Nenhum dado encontrado para os filtros selecionados.")
@@ -497,6 +668,41 @@ with tab1:
                 f"faturamento total de R$ {rv['faturamento_total']:,.2f} "
                 f"e ticket médio de R$ {rv['ticket_medio']:,.2f}."
             )
+
+        comparativo = dados["comparativo"]
+        insights = dados["insights"]
+
+        st.subheader("🧠 Alertas e Insights Automáticos")
+        st.caption(
+            "Esta seção fica logo abaixo do resumo executivo e mostra automaticamente exceções, riscos e oportunidades encontradas nos dados filtrados."
+        )
+        ci1, ci2, ci3 = st.columns(3)
+        var_fat = comparativo["faturamento"]["variacao_pct"]
+        var_ticket = comparativo["ticket_medio"]["variacao_pct"]
+        var_pend = comparativo["pendentes"]["variacao_pct"]
+        ci1.metric(
+            "Faturamento vs período anterior",
+            f"R$ {comparativo['faturamento']['atual']:,.2f}",
+            delta=(f"{var_fat:+.1f}%" if var_fat is not None else "N/D"),
+        )
+        ci2.metric(
+            "Ticket médio vs período anterior",
+            f"R$ {comparativo['ticket_medio']['atual']:,.2f}",
+            delta=(f"{var_ticket:+.1f}%" if var_ticket is not None else "N/D"),
+        )
+        ci3.metric(
+            "Pendências vs período anterior",
+            f"{int(comparativo['pendentes']['atual'])}",
+            delta=(f"{var_pend:+.1f}%" if var_pend is not None else "N/D"),
+            delta_color="inverse",
+        )
+        st.caption(
+            f"Comparativo entre {comparativo['periodo_atual_label']} e {comparativo['periodo_anterior_label']}."
+        )
+        if not insights.empty:
+            st.dataframe(insights, use_container_width=True, hide_index=True)
+        else:
+            st.info("Sem insights automáticos para os filtros selecionados.")
 
         st.divider()
 
@@ -686,6 +892,7 @@ Commands:
   🎫 Ticket médio: R$ {rv['ticket_medio']:>12,.2f}
   💵 Dólar:        R$ {dolar['valor']:>12.2f}
 
+  🧠 Insight:      {dados['insights'].iloc[0]['Insight'] if not dados['insights'].empty else 'Sem alertas relevantes'}
   🔎 Filtro atual: {periodo_global}
   ⏰ {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
 ═══════════════════════════════════════════════════════
@@ -702,6 +909,8 @@ Commands:
                         vendas_mes=dados["mensal"],
                         metas_comparativo=dados["metas_comp"],
                         cotacao_dolar=dolar,
+                        comparativo_periodos=dados["comparativo"],
+                        insights=dados["insights"],
                     )
                     output = f"""📥 Extraindo dados...
 🔄 Processando...
@@ -951,3 +1160,5 @@ with tab4:
         st.success(
             f"Último evento: {ultimo['tipo']} | {ultimo['status']} | {ultimo['timestamp']}"
         )
+
+

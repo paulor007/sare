@@ -57,6 +57,8 @@ def extrair_cotacao_dolar() -> dict:
                 return {
                     "data": data.strftime("%d/%m/%Y"),
                     "valor": round(cotacao.get("cotacaoCompra", 0), 2),
+                    "origem": "BCB/PTAX",
+                    "modo": "oficial_diaria",
                 }
             
         # Se não achou em 5 dias, retorna fallback

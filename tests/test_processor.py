@@ -13,6 +13,8 @@ from src.processor import (
     vendas_por_vendedor,
     vendas_por_mes,
     comparar_metas,
+    comparar_periodos,
+    gerar_alertas_insights,
 )
 
 def test_resumo_vendas_retorna_metricas():
@@ -82,3 +84,33 @@ def test_resumo_vendas_dataframe_vazio():
     rv = resumo_vendas(df_vazio)
     assert rv["faturamento_total"] == 0
     assert rv["total_vendas"] == 0
+
+def test_comparar_metas_retorna_linhas_com_seed_atual():
+    """Com o seed atual, a comparação de metas deve encontrar a coluna mensal correta."""
+    vendas = extrair_vendas()
+    metas = extrair_metas()
+    comp = comparar_metas(vendas, metas)
+
+    assert not comp.empty
+    assert comp.attrs.get("meta_label") is not None
+
+
+def test_comparar_periodos_retorna_variacoes():
+    """Comparativo deve expor períodos atual/anterior e métricas de variação."""
+    vendas = extrair_vendas()
+    comparativo = comparar_periodos(vendas)
+
+    assert "periodo_atual" in comparativo
+    assert "faturamento" in comparativo
+    assert "variacao_pct" in comparativo["faturamento"]
+
+
+def test_gerar_alertas_insights_retorna_dataframe():
+    """Módulo novo deve retornar alertas mesmo quando não houver criticidade."""
+    vendas = extrair_vendas()
+    metas = extrair_metas()
+    insights = gerar_alertas_insights(vendas, metas)
+
+    assert isinstance(insights, pd.DataFrame)
+    assert not insights.empty
+    assert {"Severidade", "Tipo", "Insight", "Indicador"}.issubset(insights.columns)

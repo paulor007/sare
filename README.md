@@ -1,4 +1,4 @@
-# 🏢 SARE — Sistema de Automação de Relatórios Empresariais
+# SARE — Sistema de Automação de Relatórios Empresariais
 
 > **O problema:** Gestores perdem horas toda semana montando relatórios manualmente — abrindo planilhas, copiando dados, formatando tabelas, enviando por email.
 >
@@ -12,7 +12,7 @@
 
 ---
 
-## 📊 Números do projeto
+## Números do projeto
 
 | Métrica             | Valor                        |
 | ------------------- | ---------------------------- |
@@ -25,7 +25,7 @@
 
 ---
 
-## 🎯 Quem usa e como
+## Quem usa e como
 
 | Usuário               | O que faz                                              | Como acessa      |
 | --------------------- | ------------------------------------------------------ | ---------------- |
@@ -36,22 +36,22 @@
 
 ---
 
-## 🚀 O que o sistema entrega
+## O que o sistema entrega
 
-### 📥 Extração multi-fonte
+### Extração multi-fonte
 
 - **Banco SQL** — vendas, vendedores, produtos via SQLAlchemy com JOINs
 - **Planilha Excel** — metas por vendedor com detecção automática de coluna por mês
 - **API pública** — cotação do dólar PTAX em tempo real (Banco Central)
 
-### 🔄 Processamento + Alertas
+### Processamento + Alertas
 
 - Faturamento, ticket médio, rankings por vendedor/categoria/produto
 - **Comparação entre períodos** — mês atual vs anterior com variação %
 - **6 alertas automáticos** — queda de faturamento, ticket caindo, aumento de pendências, vendedores abaixo da meta, projeção de meta, categoria em crescimento
 - Metas inteligentes — detecta coluna correta (Jan/Fev/Mar) conforme o período
 
-### 📤 Upload multiformato (novo!)
+### Upload multiformato (novo!)
 
 - Aceita **.xlsx, .csv, .txt, .docx** (com tabelas)
 - **Organização automática** de planilhas bagunçadas: colunas diferentes, delimitadores mistos, números como texto, datas mal formatadas
@@ -59,18 +59,18 @@
 - **Persistência** — dados sobrevivem ao refresh da página
 - Download da planilha organizada
 
-### 📄 Relatório PDF profissional
+### Relatório PDF profissional
 
 - Cabeçalho com empresa, cards de métricas, 5 tabelas zebradas
 - **Alertas e insights integrados** no PDF
 - Rodapé automático com timestamp
 
-### 📧 Email automático
+### Email automático
 
 - Gmail SMTP com corpo HTML profissional e PDF anexado
 - Horário 100% configurável (`-h 08:00`, `-h 14:00`, `-h 18:00`)
 
-### 📊 Dashboard interativo
+### Dashboard interativo
 
 - Header com posicionamento de produto (problema → solução → quem usa)
 - 4 gráficos Plotly interativos
@@ -81,7 +81,7 @@
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 ```
                     Upload (.xlsx/.csv/.txt/.docx)
@@ -118,7 +118,7 @@ sare/
 
 ---
 
-## 🛠️ Stack Técnica
+## Stack Técnica
 
 | Tecnologia         | Para quê         | Por quê                                |
 | ------------------ | ---------------- | -------------------------------------- |
@@ -135,7 +135,7 @@ sare/
 
 ---
 
-## 🧪 Desafios técnicos resolvidos
+## Desafios técnicos resolvidos
 
 | Desafio                                 | Solução                                     |
 | --------------------------------------- | ------------------------------------------- |
@@ -150,7 +150,7 @@ sare/
 
 ---
 
-## 💻 Comandos CLI
+## Comandos CLI
 
 ```bash
 python app.py status                         # Resumo + alertas
@@ -164,7 +164,7 @@ python app.py agendar -h 09:00 -i semanal   # Segunda às 9h
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [x] Extração multi-fonte (SQL + Excel + API)
 - [x] Processamento Pandas com programação defensiva
@@ -183,15 +183,15 @@ python app.py agendar -h 09:00 -i semanal   # Segunda às 9h
 
 ---
 
-## 🔒 Código-fonte
+## Código-fonte
 
 Repositório privado. Acesso para avaliação técnica sob demanda.
 
-📧 [Portfolio](https://paulolavarini-portfolio.netlify.app) | [GitHub](https://github.com/paulor007)
+[Portfolio](https://paulolavarini-portfolio.netlify.app) | [GitHub](https://github.com/paulor007)
 
 ---
 
-## 👨‍💻 Autor
+## Autor
 
 **Paulo Lavarini** — Desenvolvedor Python
 

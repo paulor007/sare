@@ -18,6 +18,10 @@ from datetime import datetime, timedelta
 
 from src.config import BCB_API_URL
 
+import logging
+
+logger = logging.getLogger("sare.extractor.api")
+
 def extrair_cotacao_dolar() -> dict:
     """
     Busca cotação atual do dólar (PTAX) na API do Banco Central.
@@ -82,7 +86,7 @@ def _fallback(motivo: str) -> dict:
     - Não faz sentido impedir o relatório inteiro por isso
     - Melhor mostrar um valor estimado do que nada
     """
-    print(f" Cotação dólar (fallback): {motivo}")
+    logger.warning(" Cotação dólar (fallback): %s", motivo)
     return {
         "data": datetime.now().strftime("%d/%m/%Y"),
         "valor": 5.26, # Valor estimado (atualizar periodicamente)

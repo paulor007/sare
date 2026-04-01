@@ -14,6 +14,9 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
+import logging
+
+logger = logging.getLogger("sare.processor")
 
 MESES_PT_ABREV = {
     1: "Jan",
@@ -51,8 +54,8 @@ def _has_columns(df: pd.DataFrame, columns: list[str]) -> bool:
     """
     missing = [col for col in columns if col not in df.columns]
     if missing:
-        print(f" Colunas ausentes no DataFrame: {missing}")
-        print(f"  Colunas disponíveis: {list(df.columns)}")
+        logger.warning(" Colunas ausentes no DataFrame: %s", missing)
+        logger.debug("  Colunas disponíveis: %s", list(df.columns))
         return False
     return True
 
@@ -65,7 +68,7 @@ def _filter_by_status(df: pd.DataFrame, status: str) -> pd.DataFrame:
     (assume que todos são válidos).
     """
     if "status" not in df.columns:
-        print(" Coluna 'status' não encontrada — usando todos os registros")
+        logger.warning(" Coluna 'status' não encontrada — usando todos os registros")
         return df
     return df[df["status"] == status]
 

@@ -24,6 +24,10 @@ from datetime import datetime
 
 from src.config import EMAIL_REMETENTE, EMAIL_SENHA, EMAIL_DESTINATARIO, EMPRESA_NOME
 
+import logging
+
+logger = logging.getLogger("sare.mailer")
+
 
 def enviar_relatorio(
     caminho_pdf: str,
@@ -48,21 +52,21 @@ def enviar_relatorio(
 
     # ── Validações ──
     if not EMAIL_REMETENTE or not EMAIL_SENHA:
-        print(" Credenciais de email não configuradas no .env")
-        print("   Configure EMAIL_REMETENTE e EMAIL_SENHA")
+        logger.error(" Credenciais de email não configuradas no .env")
+        logger.info("   Configure EMAIL_REMETENTE e EMAIL_SENHA")
         return False
 
     if destinatario is None:
         destinatario = EMAIL_DESTINATARIO
 
     if not destinatario:
-        print(" Destinatário não configurado")
-        print("   Configure EMAIL_DESTINATARIO no .env ou passe como parâmetro")
+        logger.error(" Destinatário não configurado")
+        logger.info("   Configure EMAIL_DESTINATARIO no .env ou passe como parâmetro")
         return False
 
     arquivo = Path(caminho_pdf)
     if not arquivo.exists():
-        print(f" PDF não encontrado: {caminho_pdf}")
+        logger.error(" PDF não encontrado: %s", caminho_pdf)
         return False
 
     # ── Montar email ──
@@ -127,24 +131,22 @@ def enviar_relatorio(
             server.login(EMAIL_REMETENTE, EMAIL_SENHA)
             server.send_message(msg)
 
-        print(f" Email enviado para {destinatario}")
+        logger.info(" Email enviado para %s", destinatario)
         return True
 
     except smtplib.SMTPAuthenticationError:
-        print(" Erro de autenticação.")
-        print("   Verifique a senha de app no .env")
-        print("   (Não é a senha normal do Gmail — é a senha de 16 chars)")
+        logger.error("Erro de autenticação — verifique a senha de app no .env (16 caracteres)")
         return False
 
     except smtplib.SMTPRecipientsRefused:
-        print(f" Destinatário recusado: {destinatario}")
-        print("   Verifique se o email está correto")
+        logger.error(" Destinatário recusado: %s", destinatario)
+        logger.info("   Verifique se o email está correto")
         return False
 
     except smtplib.SMTPException as e:
-        print(f" Erro SMTP: {e}")
+        logger.error("Erro SMTP: %s", e)
         return False
 
     except Exception as e:
-        print(f" Erro inesperado ao enviar email: {e}")
+        logger.error("Erro inesperado ao enviar email: %s", e)
         return False

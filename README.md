@@ -185,7 +185,17 @@ python app.py agendar -h 09:00 -i semanal   # Segunda às 9h
 
 ## Código-fonte
 
-Repositório privado. Acesso para avaliação técnica sob demanda.
+Repositório público. Clone e rode localmente:
+
+```bash
+git clone https://github.com/paulor007/sare.git
+cd sare
+pip install -r requirements.txt
+python data/seed.py          # Popula banco de dados
+python data/seed_metas.py    # Gera planilha de metas
+streamlit run dashboard.py   # Abre dashboard
+python app.py --help         # Comandos CLI
+```
 
 [Portfolio](https://paulolavarini-portfolio.netlify.app) | [GitHub](https://github.com/paulor007)
 

@@ -6,9 +6,14 @@ Por que usar pd.read_sql() e não session.query()?
 - Permite escrever queries SQL com JOINs facilmente
 - O Pandas já faz parse de datas automaticamente
 
-Retorna DataFrames padronizados para o processador (Fase 04).
+Retorna DataFrames padronizados para o processador.
+
+Segurança:
+- Usa parâmetros SQL (bind params) em vez de f-strings para evitar SQL Injection
+- sqlalchemy.text() garante que os parâmetros são escapados corretamente
 """
 import pandas as pd
+from sqlalchemy import text
 from src.database import engine
 
 def extrair_vendas(data_inicio: str = None, data_fim: str = None) -> pd.DataFrame:
@@ -24,10 +29,10 @@ def extrair_vendas(data_inicio: str = None, data_fim: str = None) -> pd.DataFram
 
     Retorna DataFrame com colunas:
         id, data, vendedor, setor, produto, categoria, quantidade,
-        valor_total, cliente, cidade, status
+        valor_total, status
     """
-    query = """
-SELECT
+    query_str = """
+        SELECT
             v.id,
             v.data,
             vd.nome AS vendedor,
@@ -43,16 +48,23 @@ SELECT
         WHERE 1=1
     """
 
-    # WHERE 1=1 é um truque para facilitar adicionar filtros:
-    # Não precisa verificar se é o primeiro AND ou não.
+    # Parâmetros SQL (bind params) — protegem contra SQL Injection.
+    # Em vez de colocar o valor direto na string (f-string),
+    # usei :nome_param e passei o valor separado.
+    # O SQLAlchemy escapa automaticamente.
+    params = {}
+
     if data_inicio:
-        query += f" AND v.data >= '{data_inicio}'"
+        query_str += " AND v.data >= :data_inicio"
+        params["data_inicio"] = data_inicio
     if data_fim:
-        query += f" AND v.data <= '{data_fim}'"
+        query_str += " AND v.data <= :data_fim"
+        params["data_fim"] = data_fim
 
-    query += " ORDER BY v.data DESC"
+    query_str += " ORDER BY v.data DESC"
 
-    df = pd.read_sql(query, engine, parse_dates=["data"])
+    # text() transforma a string em objeto SQL seguro do SQLAlchemy
+    df = pd.read_sql(text(query_str), engine, params=params, parse_dates=["data"])
     return df
 
 def extrair_vendas_resumo() -> pd.DataFrame:
@@ -60,5 +72,5 @@ def extrair_vendas_resumo() -> pd.DataFrame:
     Extrai resumo rápido de vendas (sem JOINs).
     Útil para contagens e totais simples.
     """
-    query = "SELECT * FROM vendas ORDER BY data DESC"
+    query = text("SELECT * FROM vendas ORDER BY data DESC")
     return pd.read_sql(query, engine, parse_dates=["data"])

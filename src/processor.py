@@ -1,7 +1,3 @@
-# ══════════════════════════════════════════════════════════
-# COLE ESTE CONTEÚDO NO src/processor.py (substituir tudo)
-# ══════════════════════════════════════════════════════════
-
 """
 Processador de dados — motor de análise com Pandas.
 
